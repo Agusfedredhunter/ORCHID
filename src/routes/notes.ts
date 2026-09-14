@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { z } from 'zod';
 import { NoteService } from '../services/NoteService';
+import { NoteController } from '../controllers/NoteController';
 
 // Contrato HTTP fijo (no lo cambien):
 //   POST   /notes
@@ -9,58 +9,21 @@ import { NoteService } from '../services/NoteService';
 //   PATCH  /notes/:id
 //   DELETE /notes/:id
 //
-// Esta capa ya está resuelta: valida con Zod en el borde (safeParse, nunca
-// parse) y delega toda la lógica de negocio en NoteService. Los tests de
-// integración (Supertest) de cada ejercicio prueban esta capa.
-
-const createSchema = z.object({
-  title: z.string().min(1, 'title es requerido'),
-  content: z.string().min(1, 'content es requerido'),
-  pinned: z.boolean().optional()
-});
-
-const patchSchema = createSchema.partial();
+// Esta capa solo define el ruteo: mapea cada endpoint al método del
+// NoteController correspondiente. Toda la validación y la lógica de
+// request/response vive en src/controllers/NoteController.ts, que a su vez
+// delega en NoteService. Los tests de integración (Supertest) de cada
+// ejercicio prueban esta capa (a través de la app completa).
 
 export function makeNotesRouter(service: NoteService) {
   const router = Router();
+  const controller = new NoteController(service);
 
-  router.post('/', (req, res) => {
-    const parsed = createSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: 'ValidationError', details: parsed.error.flatten() });
-    }
-    const note = service.createNote(parsed.data);
-    res.status(201).json(note);
-  });
-
-  router.get('/', (_req, res) => {
-    res.json(service.listNotes());
-  });
-
-  router.get('/:id', (req, res) => {
-    const id = Number(req.params.id);
-    const note = service.getNote(id);
-    if (!note) return res.status(404).json({ error: 'NotFound' });
-    res.json(note);
-  });
-
-  router.patch('/:id', (req, res) => {
-    const id = Number(req.params.id);
-    const parsed = patchSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: 'ValidationError', details: parsed.error.flatten() });
-    }
-    const updated = service.updateNote(id, parsed.data);
-    if (!updated) return res.status(404).json({ error: 'NotFound' });
-    res.json(updated);
-  });
-
-  router.delete('/:id', (req, res) => {
-    const id = Number(req.params.id);
-    const ok = service.deleteNote(id);
-    if (!ok) return res.status(404).json({ error: 'NotFound' });
-    res.status(204).send();
-  });
+  router.post('/', controller.create);
+  router.get('/', controller.list);
+  router.get('/:id', controller.getById);
+  router.patch('/:id', controller.update);
+  router.delete('/:id', controller.remove);
 
   return router;
 }
