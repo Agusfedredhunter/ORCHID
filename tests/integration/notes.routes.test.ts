@@ -15,7 +15,7 @@ describe('Rutas DELETE /notes/:id', () => {
       .post('/notes')
       .send({ title: 'A borrar', content: 'Chao' });
 
-    // 2. Acción: Ejecutamos TU código del Ejercicio 5 (DELETE)
+    // 2. Acción: Ejecutamos código del Ejercicio 5 (DELETE)
     const res = await request(app).delete(`/notes/${created.body.id}`);
     
     // 3. Aserción: Comprobamos que el servidor responde que se borró correctamente
